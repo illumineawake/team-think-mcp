@@ -3,6 +3,8 @@
 import { McpServer } from './mcp/server';
 import { ToolRegistry } from './tools/registry';
 import { logger, LogLevel } from './utils/logger';
+import { getWebSocketServer } from './websocket';
+import { WEBSOCKET_PORT } from './config/constants';
 
 // Set debug level if requested
 if (process.env.DEBUG) {
@@ -15,18 +17,26 @@ logger.info('Team Think MCP Server started');
 const toolRegistry = new ToolRegistry();
 const server = new McpServer(toolRegistry);
 
+// Create WebSocket server
+const wsServer = getWebSocketServer(WEBSOCKET_PORT);
+
 // Graceful shutdown handling
 let isShuttingDown = false;
 
-const shutdown = (signal: string) => {
+const shutdown = async (signal: string) => {
   if (isShuttingDown) return;
   isShuttingDown = true;
   
   logger.info(`Received ${signal}, shutting down gracefully...`);
   
   try {
+    // Stop WebSocket server first
+    await wsServer.stop();
+    
+    // Stop MCP server
     server.close();
     toolRegistry.clear();
+    
     logger.info('Server shutdown complete');
     process.exit(0);
   } catch (error) {
@@ -48,11 +58,20 @@ process.on('unhandledRejection', (reason, promise) => {
   shutdown('unhandledRejection');
 });
 
-// Start the server
-try {
-  server.start();
-  logger.info('MCP server is ready to accept connections');
-} catch (error) {
-  logger.error('Failed to start server:', error);
-  process.exit(1);
+// Start the servers
+async function startServers() {
+  try {
+    // Start MCP server first
+    server.start();
+    logger.info('MCP server is ready to accept connections');
+    
+    // Start WebSocket server
+    await wsServer.start();
+    logger.info('All servers started successfully');
+  } catch (error) {
+    logger.error('Failed to start servers:', error);
+    process.exit(1);
+  }
 }
+
+startServers();
