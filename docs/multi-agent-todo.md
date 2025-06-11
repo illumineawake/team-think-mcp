@@ -1,271 +1,127 @@
-# Multi-Agent Implementation Plan: Phase 1 - Project Scaffolding & Shared Types
+# Multi-Agent Todo: Set up Basic Node.js MCP Server
 
-## Context for Agent 2 (Builder)
-You are implementing Phase 1 of the Team Think MCP project. This phase focuses on creating the basic monorepo structure and defining shared types for WebSocket communication.
+## Task: Phase 2, Step 2.1 - Set up a basic Node.js server using TypeScript
 
-### Important Documents to Reference
-- [X] Read @team-think-mcp/docs/BLUEPRINT.md to understand the overall project architecture
-- [X] Read @team-think-mcp/docs/plan.md to see the full project plan
+This plan breaks down the implementation of a basic MCP (Model Context Protocol) server that will serve as the foundation for the Team Think MCP project.
 
-### Phase 1.1: Create Monorepo Structure
+### Prerequisites
+- [X] Read @team-think-mcp/docs/BLUEPRINT.md to understand the overall architecture
+- [X] Read @team-think-mcp/shared/src/types/websocket-messages.ts to understand the message types
 
-- [X] Create the base directory structure:
-  - [X] Create `/team-think-mcp/server` directory
-  - [X] Create `/team-think-mcp/extension` directory  
-  - [X] Create `/team-think-mcp/shared` directory
+### Implementation Steps
 
-### Phase 1.2: Define Shared TypeScript Types
+#### 1. Create Basic Server Structure
+- [X] Create `/team-think-mcp/server/src/index.ts` as the main entry point
+- [X] Add basic imports for Node.js built-in modules (readline, process)
+- [X] Add a simple console log to verify the server starts
 
-First, set up the shared package:
+#### 2. Implement MCP Protocol Handler
+- [X] Create `/team-think-mcp/server/src/mcp/protocol.ts` for MCP protocol handling
+- [X] Implement a function to read JSON-RPC messages from stdin
+- [X] Implement a function to write JSON-RPC messages to stdout
+- [X] Add proper TypeScript types for JSON-RPC messages
 
-- [X] Create `/team-think-mcp/shared/package.json` with:
-  ```json
-  {
-    "name": "@team-think-mcp/shared",
-    "version": "0.1.0",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
-    "scripts": {
-      "build": "tsc"
+#### 3. Create MCP Message Types
+- [X] Create `/team-think-mcp/server/src/mcp/types.ts` for MCP-specific types
+- [X] Define interfaces for MCP requests (initialize, tool calls, etc.)
+- [X] Define interfaces for MCP responses
+- [X] Define error response types
+
+#### 4. Implement MCP Handshake
+- [X] In `protocol.ts`, add handler for "initialize" request
+- [X] Respond with server capabilities (tools will be added later)
+- [X] Handle "initialized" notification
+- [X] Add logging for handshake completion
+
+#### 5. Create Tools Registry
+- [X] Create `/team-think-mcp/server/src/tools/registry.ts` for tool management
+- [X] Implement a ToolRegistry class with methods to register and get tools
+- [X] Define the Tool interface with name, description, and inputSchema
+- [X] Add placeholder for tool execution (will be implemented in later steps)
+
+#### 6. Add Logging System
+- [X] Create `/team-think-mcp/server/src/utils/logger.ts` for structured logging
+- [X] Implement log levels (debug, info, warn, error)
+- [X] Add timestamps to log messages
+- [X] Ensure logs go to stderr (not stdout, which is for MCP)
+
+#### 7. Wire Everything Together
+- [X] Update `index.ts` to initialize the protocol handler
+- [X] Set up the main message loop to handle incoming requests
+- [X] Add graceful shutdown handling (SIGINT, SIGTERM)
+- [X] Handle unexpected errors and log them appropriately
+
+#### 8. Add Basic Error Handling
+- [X] Implement error response formatting according to JSON-RPC spec
+- [X] Add try-catch blocks around message handling
+- [X] Handle malformed JSON input gracefully
+- [X] Add timeout handling for long-running operations
+
+#### 9. Create Development Helpers
+- [X] Add a `dev.ts` file for testing the server locally
+- [X] Implement a simple test client that sends initialize request
+- [X] Add npm script for running in development mode
+- [X] Document how to test the server manually
+
+#### 10. Verify Basic Functionality
+- [X] Test that server starts without errors
+- [X] Verify it responds to initialize request correctly
+- [X] Check that logging works and goes to stderr
+- [X] Ensure graceful shutdown works properly
+- [X] Test error handling with malformed input
+
+### Code Snippets for Reference
+
+Basic JSON-RPC message structure:
+```typescript
+interface JsonRpcRequest {
+  jsonrpc: "2.0";
+  id: string | number;
+  method: string;
+  params?: any;
+}
+
+interface JsonRpcResponse {
+  jsonrpc: "2.0";
+  id: string | number;
+  result?: any;
+  error?: {
+    code: number;
+    message: string;
+    data?: any;
+  };
+}
+```
+
+Basic MCP initialize response:
+```typescript
+{
+  jsonrpc: "2.0",
+  id: 1,
+  result: {
+    protocolVersion: "2024-11-05",
+    capabilities: {
+      tools: {}
     },
-    "devDependencies": {
-      "@types/node": "^18.0.0",
-      "typescript": "^5.0.0"
+    serverInfo: {
+      name: "team-think-mcp",
+      version: "0.1.0"
     }
   }
-  ```
+}
+```
 
-- [X] Create `/team-think-mcp/shared/tsconfig.json` with standard TypeScript configuration:
-  ```json
-  {
-    "compilerOptions": {
-      "target": "ES2020",
-      "module": "commonjs",
-      "lib": ["ES2020"],
-      "outDir": "./dist",
-      "rootDir": "./src",
-      "strict": true,
-      "esModuleInterop": true,
-      "skipLibCheck": true,
-      "forceConsistentCasingInFileNames": true,
-      "declaration": true,
-      "declarationMap": true,
-      "sourceMap": true
-    },
-    "include": ["src/**/*"],
-    "exclude": ["node_modules", "dist"]
-  }
-  ```
+### Notes for Implementation
+- Keep each file focused on a single responsibility
+- Use TypeScript's strict mode to catch errors early
+- Follow the existing code style from the shared package
+- All MCP communication must use stdin/stdout
+- WebSocket functionality will be added in step 2.2 (not part of this task)
+- Tools (chat_gemini, chat_chatgpt) will be implemented in step 2.5
 
-- [X] Create `/team-think-mcp/shared/src` directory
-
-- [X] Create `/team-think-mcp/shared/src/types` directory
-
-- [X] Create `/team-think-mcp/shared/src/types/websocket-messages.ts` with the versioned message types:
-  ```typescript
-  // Base message interface with versioning
-  interface BaseMessage {
-    schema: '1.0';
-    timestamp: number;
-  }
-
-  // MCP Server → Extension
-  export interface SendPromptMessage extends BaseMessage {
-    action: 'send-prompt';
-    requestId: string;
-    chatbot: 'gemini' | 'chatgpt';
-    prompt: string;
-    options?: {
-      temperature?: number;
-      model?: string;
-    };
-  }
-
-  // Extension → MCP Server  
-  export interface ChatResponseMessage extends BaseMessage {
-    action: 'chat-response';
-    requestId: string;
-    response: string;
-    error?: string;
-  }
-
-  // Union type for all messages
-  export type WebSocketMessage = SendPromptMessage | ChatResponseMessage;
-  ```
-
-- [X] Create `/team-think-mcp/shared/src/index.ts` to export all types:
-  ```typescript
-  export * from './types/websocket-messages';
-  ```
-
-### Phase 1.3: Set Up Server Package
-
-- [X] Create `/team-think-mcp/server/package.json` with:
-  ```json
-  {
-    "name": "@team-think-mcp/server",
-    "version": "0.1.0",
-    "main": "dist/index.js",
-    "scripts": {
-      "build": "tsc",
-      "start": "node dist/index.js",
-      "dev": "ts-node src/index.ts"
-    },
-    "dependencies": {
-      "@team-think-mcp/shared": "workspace:*",
-      "ws": "^8.0.0"
-    },
-    "devDependencies": {
-      "@types/node": "^18.0.0",
-      "@types/ws": "^8.0.0",
-      "ts-node": "^10.0.0",
-      "typescript": "^5.0.0"
-    }
-  }
-  ```
-
-- [X] Create `/team-think-mcp/server/tsconfig.json` with:
-  ```json
-  {
-    "compilerOptions": {
-      "target": "ES2020",
-      "module": "commonjs",
-      "lib": ["ES2020"],
-      "outDir": "./dist",
-      "rootDir": "./src",
-      "strict": true,
-      "esModuleInterop": true,
-      "skipLibCheck": true,
-      "forceConsistentCasingInFileNames": true,
-      "resolveJsonModule": true
-    },
-    "include": ["src/**/*"],
-    "exclude": ["node_modules", "dist"],
-    "references": [
-      { "path": "../shared" }
-    ]
-  }
-  ```
-
-- [X] Create `/team-think-mcp/server/src` directory
-
-### Phase 1.3: Set Up Extension Package
-
-- [X] Create `/team-think-mcp/extension/package.json` with:
-  ```json
-  {
-    "name": "@team-think-mcp/extension",
-    "version": "0.1.0",
-    "scripts": {
-      "build": "webpack --mode production",
-      "dev": "webpack --mode development --watch"
-    },
-    "dependencies": {
-      "@team-think-mcp/shared": "workspace:*"
-    },
-    "devDependencies": {
-      "@types/chrome": "^0.0.250",
-      "@types/webextension-polyfill": "^0.10.0",
-      "ts-loader": "^9.0.0",
-      "typescript": "^5.0.0",
-      "webpack": "^5.0.0",
-      "webpack-cli": "^5.0.0",
-      "webextension-polyfill": "^0.10.0"
-    }
-  }
-  ```
-
-- [X] Create `/team-think-mcp/extension/tsconfig.json` with:
-  ```json
-  {
-    "compilerOptions": {
-      "target": "ES2020",
-      "module": "ES2020",
-      "lib": ["ES2020", "DOM"],
-      "outDir": "./dist",
-      "rootDir": "./src",
-      "strict": true,
-      "esModuleInterop": true,
-      "skipLibCheck": true,
-      "forceConsistentCasingInFileNames": true,
-      "moduleResolution": "node"
-    },
-    "include": ["src/**/*"],
-    "exclude": ["node_modules", "dist"],
-    "references": [
-      { "path": "../shared" }
-    ]
-  }
-  ```
-
-- [X] Create `/team-think-mcp/extension/src` directory
-
-### Phase 1.4: Create Root Configuration Files
-
-- [X] Create `/team-think-mcp/package.json` for the monorepo:
-  ```json
-  {
-    "name": "team-think-mcp",
-    "version": "0.1.0",
-    "private": true,
-    "workspaces": [
-      "shared",
-      "server", 
-      "extension"
-    ],
-    "scripts": {
-      "build": "npm run build --workspaces",
-      "build:shared": "npm run build -w @team-think-mcp/shared",
-      "build:server": "npm run build -w @team-think-mcp/server",
-      "build:extension": "npm run build -w @team-think-mcp/extension"
-    },
-    "devDependencies": {
-      "typescript": "^5.0.0"
-    }
-  }
-  ```
-
-- [X] Create `/team-think-mcp/tsconfig.json` root TypeScript config:
-  ```json
-  {
-    "files": [],
-    "references": [
-      { "path": "./shared" },
-      { "path": "./server" },
-      { "path": "./extension" }
-    ]
-  }
-  ```
-
-- [X] Create `/team-think-mcp/.gitignore`:
-  ```
-  node_modules/
-  dist/
-  *.log
-  .DS_Store
-  ```
-
-### Verification Steps
-
-After completing all tasks above:
-
-- [X] Run `npm install` in the `/team-think-mcp` directory to set up the monorepo
-- [X] Run `npm run build:shared` to verify the shared package builds successfully
-- [X] Verify the directory structure matches the blueprint architecture
-
-## Important Notes for Implementation
-
-1. **Directory Creation Order**: Create parent directories before child directories
-2. **File Creation Order**: Create package.json files before running npm install
-3. **Reference the Blueprint**: The BLUEPRINT.md file contains detailed architecture information - use it to verify your implementation matches the design
-4. **Small Steps**: Each checkbox is a small, verifiable step. Complete and verify each one before moving to the next
-5. **Ask for Clarification**: If any step is unclear or seems incorrect, ask for clarification before proceeding
-
-## Success Criteria
-
-Phase 1 is complete when:
-- The monorepo structure exists with server, extension, and shared directories
-- All package.json and tsconfig.json files are created and properly configured
-- The shared WebSocket message types are defined with version 1.0 schema
-- The monorepo can be installed with `npm install` without errors
-- The shared package can be built successfully
+### Success Criteria
+- [X] Server starts and logs "Team Think MCP Server started"
+- [X] Server responds correctly to MCP initialize request
+- [X] Server handles errors gracefully without crashing
+- [X] All TypeScript compiles without errors
+- [X] Logging system works and provides useful debugging info
