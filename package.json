@@ -1,0 +1,19 @@
+{
+  "name": "team-think-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "shared",
+    "server", 
+    "extension"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "build:shared": "npm run build -w @team-think-mcp/shared",
+    "build:server": "npm run build -w @team-think-mcp/server",
+    "build:extension": "npm run build -w @team-think-mcp/extension"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

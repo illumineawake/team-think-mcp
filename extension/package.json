@@ -1,0 +1,20 @@
+{
+  "name": "@team-think-mcp/extension",
+  "version": "0.1.0",
+  "scripts": {
+    "build": "webpack --mode production",
+    "dev": "webpack --mode development --watch"
+  },
+  "dependencies": {
+    "@team-think-mcp/shared": "*"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.250",
+    "@types/webextension-polyfill": "^0.10.0",
+    "ts-loader": "^9.0.0",
+    "typescript": "^5.0.0",
+    "webpack": "^5.0.0",
+    "webpack-cli": "^5.0.0",
+    "webextension-polyfill": "^0.10.0"
+  }
+}
