@@ -1,7 +1,8 @@
 import { WebSocket, WebSocketServer } from 'ws';
 import { logger } from '../utils/logger';
-import { WebSocketMessage, SendPromptMessage, ChatResponseMessage } from '@team-think-mcp/shared';
-import { MAX_CONCURRENT_CONNECTIONS, CONNECTION_TIMEOUT_MS, HEARTBEAT_INTERVAL_MS } from '../config/constants';
+import { WebSocketMessage, SendPromptMessage, ChatResponseMessage, AuthenticationMessage, isAuthenticationMessage } from '@team-think-mcp/shared';
+import { MAX_CONCURRENT_CONNECTIONS, CONNECTION_TIMEOUT_MS, HEARTBEAT_INTERVAL_MS, AUTH_TIMEOUT_MS, TOKEN_LENGTH } from '../config/constants';
+import { generateSecurityToken, validateToken } from '../utils/security';
 
 /**
  * WebSocket Server Manager for Team Think MCP
@@ -21,6 +22,8 @@ interface ClientInfo {
   socket: WebSocket;
   isAlive: boolean;
   connectionTime: number;
+  isAuthenticated: boolean;
+  authTimeout?: NodeJS.Timeout;
 }
 
 export class WebSocketServerManager {
@@ -29,6 +32,7 @@ export class WebSocketServerManager {
   private readonly connectedClients = new Map<string, ClientInfo>();
   private clientIdCounter = 0;
   private heartbeatInterval: NodeJS.Timeout | null = null;
+  private securityToken: string | null = null;
 
   constructor(port: number = 55156) {
     this.port = port;
@@ -39,6 +43,16 @@ export class WebSocketServerManager {
    */
   public async start(): Promise<void> {
     try {
+      // Generate security token
+      this.securityToken = generateSecurityToken(TOKEN_LENGTH);
+      
+      // Log the security token with clear formatting
+      logger.info('========================================');
+      logger.info('SECURITY TOKEN FOR BROWSER EXTENSION:');
+      logger.info(this.securityToken);
+      logger.info('========================================');
+      logger.info('Configure this token in the extension settings');
+      
       this.server = new WebSocketServer({ port: this.port });
       
       this.server.on('connection', (ws) => {
@@ -116,12 +130,23 @@ export class WebSocketServerManager {
     const clientInfo: ClientInfo = {
       socket: ws,
       isAlive: true,
-      connectionTime: Date.now()
+      connectionTime: Date.now(),
+      isAuthenticated: false
     };
     
     this.connectedClients.set(clientId, clientInfo);
     
-    logger.info(`New WebSocket client connected: ${clientId} (${this.connectedClients.size}/${MAX_CONCURRENT_CONNECTIONS})`);
+    logger.info(`New WebSocket client connected: ${clientId} (${this.connectedClients.size}/${MAX_CONCURRENT_CONNECTIONS}) - awaiting authentication`);
+
+    // Set up authentication timeout
+    clientInfo.authTimeout = setTimeout(() => {
+      const client = this.connectedClients.get(clientId);
+      if (client && !client.isAuthenticated) {
+        logger.warn(`Client ${clientId} failed to authenticate within ${AUTH_TIMEOUT_MS}ms - closing connection`);
+        ws.close(1008, 'Authentication timeout');
+        this.connectedClients.delete(clientId);
+      }
+    }, AUTH_TIMEOUT_MS);
 
     // Set up ping/pong for heartbeat
     ws.on('pong', () => {
@@ -138,6 +163,10 @@ export class WebSocketServerManager {
 
     // Set up close handler
     ws.on('close', (code, reason) => {
+      const client = this.connectedClients.get(clientId);
+      if (client?.authTimeout) {
+        clearTimeout(client.authTimeout);
+      }
       this.connectedClients.delete(clientId);
       logger.info(`WebSocket client disconnected: ${clientId} (code: ${code}, reason: ${reason.toString()}) (remaining: ${this.connectedClients.size})`);
     });
@@ -145,6 +174,10 @@ export class WebSocketServerManager {
     // Set up error handler
     ws.on('error', (error) => {
       logger.error(`WebSocket client error for ${clientId}: ${error.message}`, error);
+      const client = this.connectedClients.get(clientId);
+      if (client?.authTimeout) {
+        clearTimeout(client.authTimeout);
+      }
       this.connectedClients.delete(clientId);
     });
   }
@@ -162,9 +195,29 @@ export class WebSocketServerManager {
         return;
       }
 
-      logger.info(`Received message from ${clientId}: action=${message.action}, requestId=${message.requestId}`);
+      const clientInfo = this.connectedClients.get(clientId);
+      if (!clientInfo) {
+        logger.warn(`Received message from unknown client: ${clientId}`);
+        return;
+      }
 
-      // Handle different message types
+      // Handle authentication messages
+      if (isAuthenticationMessage(message)) {
+        this.handleAuthentication(clientId, ws, message, clientInfo);
+        return;
+      }
+
+      // Reject non-authentication messages from unauthenticated clients
+      if (!clientInfo.isAuthenticated) {
+        logger.warn(`Rejecting message from unauthenticated client ${clientId}: action=${message.action}`);
+        ws.close(1008, 'Authentication required');
+        this.connectedClients.delete(clientId);
+        return;
+      }
+
+      logger.info(`Received message from ${clientId}: action=${message.action}, requestId=${'requestId' in message ? message.requestId : 'N/A'}`);
+
+      // Handle different message types (only for authenticated clients)
       if (isChatResponseMessage(message)) {
         // TODO: Integrate with request queue (Phase 2.4)
         // For now, just log the response
@@ -183,20 +236,76 @@ export class WebSocketServerManager {
   }
 
   /**
+   * Handle authentication message from a client
+   */
+  private handleAuthentication(clientId: string, ws: WebSocket, message: AuthenticationMessage, clientInfo: ClientInfo): void {
+    logger.info(`Processing authentication for client ${clientId}`);
+
+    // Validate the provided token
+    if (!this.securityToken) {
+      logger.error(`Server security token not initialized - cannot authenticate client ${clientId}`);
+      ws.close(1011, 'Server error - token not initialized');
+      this.connectedClients.delete(clientId);
+      return;
+    }
+
+    const isValidToken = validateToken(message.token, this.securityToken);
+
+    if (isValidToken) {
+      // Authentication successful
+      clientInfo.isAuthenticated = true;
+      
+      // Clear the authentication timeout
+      if (clientInfo.authTimeout) {
+        clearTimeout(clientInfo.authTimeout);
+        clientInfo.authTimeout = undefined;
+      }
+
+      logger.info(`Client ${clientId} authenticated successfully`);
+      
+      // Send authentication success response (optional)
+      try {
+        const authResponse = {
+          schema: '1.0' as const,
+          timestamp: Date.now(),
+          action: 'auth-success' as const,
+          message: 'Authentication successful'
+        };
+        ws.send(JSON.stringify(authResponse));
+      } catch (error) {
+        logger.warn(`Failed to send auth success response to ${clientId}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    } else {
+      // Authentication failed
+      logger.warn(`Client ${clientId} provided invalid authentication token`);
+      ws.close(1008, 'Invalid authentication token');
+      this.connectedClients.delete(clientId);
+    }
+  }
+
+  /**
    * Broadcast a message to all connected clients
    */
   public broadcastMessage(message: WebSocketMessage): void {
     const messageStr = JSON.stringify(message);
     let successCount = 0;
     let errorCount = 0;
+    let skippedCount = 0;
 
     for (const [clientId, clientInfo] of this.connectedClients.entries()) {
       try {
+        // Only send to authenticated clients
+        if (!clientInfo.isAuthenticated) {
+          skippedCount++;
+          continue;
+        }
+
         if (clientInfo.socket.readyState === WebSocket.OPEN) {
           clientInfo.socket.send(messageStr);
           successCount++;
         } else {
           logger.warn(`Skipping message to ${clientId} - connection not open (state: ${clientInfo.socket.readyState})`);
+          skippedCount++;
         }
       } catch (error) {
         logger.error(`Error sending message to ${clientId}: ${error instanceof Error ? error.message : String(error)}`);
@@ -204,7 +313,7 @@ export class WebSocketServerManager {
       }
     }
 
-    logger.info(`Broadcasted message to ${successCount} clients (${errorCount} errors): action=${message.action}, requestId=${message.requestId}`);
+    logger.info(`Broadcasted message to ${successCount} authenticated clients (${errorCount} errors, ${skippedCount} skipped): action=${message.action}, requestId=${'requestId' in message ? message.requestId : 'N/A'}`);
   }
 
   /**
@@ -217,10 +326,16 @@ export class WebSocketServerManager {
       return false;
     }
 
+    // Only send to authenticated clients
+    if (!clientInfo.isAuthenticated) {
+      logger.warn(`Cannot send message to ${clientId} - client not authenticated`);
+      return false;
+    }
+
     try {
       if (clientInfo.socket.readyState === WebSocket.OPEN) {
         clientInfo.socket.send(JSON.stringify(message));
-        logger.info(`Sent message to ${clientId}: action=${message.action}, requestId=${message.requestId}`);
+        logger.info(`Sent message to ${clientId}: action=${message.action}, requestId=${'requestId' in message ? message.requestId : 'N/A'}`);
         return true;
       } else {
         logger.warn(`Cannot send message to ${clientId} - connection not open (state: ${clientInfo.socket.readyState})`);
@@ -304,6 +419,11 @@ export class WebSocketServerManager {
   private removeStaleClient(clientId: string): void {
     const clientInfo = this.connectedClients.get(clientId);
     if (clientInfo) {
+      // Clear any pending authentication timeout
+      if (clientInfo.authTimeout) {
+        clearTimeout(clientInfo.authTimeout);
+      }
+      
       try {
         clientInfo.socket.terminate();
       } catch (error) {

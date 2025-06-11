@@ -126,6 +126,12 @@ CWC Reference: `packages/browser/src/background/websocket.ts`
 
 Our WebSocket protocol:
 ```typescript
+// Extension → MCP Server (Authentication)
+interface AuthenticationMessage {
+  action: 'authenticate';
+  token: string;
+}
+
 // MCP Server → Extension
 interface SendPromptMessage {
   action: 'send-prompt';
@@ -246,7 +252,9 @@ interface ChatResponseMessage {
 
 1. **WebSocket Security**
    - Localhost-only connections (127.0.0.1:55156)
-   - Simple token authentication (following CWC pattern)
+   - Ephemeral token authentication with cryptographically secure generation
+   - 5-second authentication timeout to prevent hanging connections
+   - Constant-time token validation to prevent timing attacks
    - Different port from CWC to avoid conflicts
 
 2. **Extension Permissions**

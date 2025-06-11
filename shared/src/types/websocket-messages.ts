@@ -1,8 +1,11 @@
 // Base message interface with versioning
-interface BaseMessage {
+export interface BaseWebSocketMessage {
   schema: '1.0';
   timestamp: number;
 }
+
+// Keep legacy alias for backward compatibility
+interface BaseMessage extends BaseWebSocketMessage {}
 
 // MCP Server → Extension
 export interface SendPromptMessage extends BaseMessage {
@@ -24,5 +27,18 @@ export interface ChatResponseMessage extends BaseMessage {
   error?: string;
 }
 
+// Extension → MCP Server (Authentication)
+export interface AuthenticationMessage extends BaseWebSocketMessage {
+  action: 'authenticate';
+  token: string;
+}
+
 // Union type for all messages
-export type WebSocketMessage = SendPromptMessage | ChatResponseMessage;
+export type WebSocketMessage = SendPromptMessage | ChatResponseMessage | AuthenticationMessage;
+
+/**
+ * Type guard to check if a message is an AuthenticationMessage
+ */
+export function isAuthenticationMessage(msg: WebSocketMessage): msg is AuthenticationMessage {
+  return msg.action === 'authenticate';
+}
