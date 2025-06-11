@@ -62,8 +62,13 @@ team-think-mcp/
 │   │   │   └── registry.ts       # Tool registry system
 │   │   ├── utils/
 │   │   │   └── logger.ts         # Structured logging
-│   │   ├── dev.ts                # Development testing client
-│   │   └── websocket-server.ts   # WebSocket server (Phase 2.2)
+│   │   ├── websocket/            # WebSocket server implementation (Phase 2.2)
+│   │   │   ├── websocket-server.ts # WebSocket server with heartbeat & connection mgmt
+│   │   │   ├── index.ts          # WebSocket exports and singleton
+│   │   │   └── test-client.ts    # WebSocket test client
+│   │   ├── config/
+│   │   │   └── constants.ts      # Server configuration constants
+│   │   └── dev.ts                # Development testing client
 │   ├── package.json
 │   └── tsconfig.json
 ```

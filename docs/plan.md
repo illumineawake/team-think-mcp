@@ -21,7 +21,7 @@
 
    - [ ] **Phase 2 – MCP Server Implementation (MVP)**  
        - [x] 2.1. In the `server` package, set up a basic Node.js server using TypeScript.  
-       - [ ] 2.2. Implement a WebSocket server that listens on a new port (e.g., 55156) to avoid conflicts with CWC.  
+       - [x] 2.2. Implement a WebSocket server that listens on a new port (e.g., 55156) to avoid conflicts with CWC.  
        - [ ] 2.3. Implement a hardened security handshake: on startup, the server generates an ephemeral security token and logs it to the console for the user to configure in the extension. Reject connections without this token.  
        - [ ] 2.4. Create a robust request queue manager (`queue-manager.ts`) with the following features:
            - [ ] 2.4.1. A mechanism to hold incoming prompts and associate them with a unique `requestId`.
