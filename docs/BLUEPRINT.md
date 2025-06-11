@@ -53,12 +53,17 @@ team-think-mcp/
 ├── server/
 │   ├── src/
 │   │   ├── index.ts              # MCP server entry point
-│   │   ├── websocket-server.ts   # WebSocket server for extension
+│   │   ├── mcp/                  # MCP protocol implementation
+│   │   │   ├── protocol.ts       # JSON-RPC protocol handler
+│   │   │   ├── types.ts          # MCP type definitions
+│   │   │   ├── handshake.ts      # MCP initialization
+│   │   │   └── server.ts         # Main MCP server
 │   │   ├── tools/
-│   │   │   ├── chat-gemini.ts    # Gemini AI Studio tool
-│   │   │   └── chat-chatgpt.ts   # ChatGPT tool
-│   │   └── utils/
-│   │       └── queue-manager.ts  # Request queue management
+│   │   │   └── registry.ts       # Tool registry system
+│   │   ├── utils/
+│   │   │   └── logger.ts         # Structured logging
+│   │   ├── dev.ts                # Development testing client
+│   │   └── websocket-server.ts   # WebSocket server (Phase 2.2)
 │   ├── package.json
 │   └── tsconfig.json
 ```
