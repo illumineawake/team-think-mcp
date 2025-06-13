@@ -32,4 +32,5 @@ export interface QueueStats {
 export interface QueueManagerConfig {
   maxParallelPerService: number;
   requestTtlMs: number;
+  completedRequestRetentionMs?: number;
 }

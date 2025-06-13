@@ -1,5 +1,5 @@
 import { logger } from '../utils/logger';
-import { MAX_PARALLEL_PER_SERVICE, REQUEST_TTL_MS } from '../config/constants';
+import { MAX_PARALLEL_PER_SERVICE, REQUEST_TTL_MS, COMPLETED_REQUEST_RETENTION_MS, CLEANUP_INTERVAL_MS } from '../config/constants';
 import { QueuedRequest, QueueStats, QueueManagerConfig } from './types';
 import { randomUUID } from 'crypto';
 
@@ -15,11 +15,13 @@ export class QueueManager {
   private activeCountPerService: Map<string, number> = new Map();
   private completedRequests: Map<string, QueuedRequest> = new Map();
   private readonly config: QueueManagerConfig;
+  private cleanupInterval: NodeJS.Timeout | null = null;
 
   constructor(config?: Partial<QueueManagerConfig>) {
     this.config = {
       maxParallelPerService: config?.maxParallelPerService ?? MAX_PARALLEL_PER_SERVICE,
-      requestTtlMs: config?.requestTtlMs ?? REQUEST_TTL_MS
+      requestTtlMs: config?.requestTtlMs ?? REQUEST_TTL_MS,
+      completedRequestRetentionMs: config?.completedRequestRetentionMs ?? COMPLETED_REQUEST_RETENTION_MS
     };
 
     // Initialize service counters
@@ -31,6 +33,9 @@ export class QueueManager {
     this.pendingQueues.set('chat_chatgpt', []);
 
     logger.info(`QueueManager initialized with config: ${JSON.stringify(this.config)}`);
+
+    // Start periodic cleanup
+    this.startCleanupTimer();
   }
 
   /**
@@ -286,6 +291,9 @@ export class QueueManager {
   public cancelAllRequests(): void {
     logger.info('Cancelling all requests');
     
+    // Stop cleanup timer
+    this.stopCleanupTimer();
+    
     // Cancel all active requests
     for (const [requestId] of this.activeRequests) {
       this.cancelRequest(requestId);
@@ -373,5 +381,57 @@ export class QueueManager {
     }
 
     return stats;
+  }
+
+  /**
+   * Clean up old completed requests to prevent memory leaks
+   */
+  private cleanupCompletedRequests(): void {
+    const now = Date.now();
+    const cutoffTime = now - this.config.completedRequestRetentionMs!;
+    let removedCount = 0;
+    
+    for (const [requestId, request] of this.completedRequests.entries()) {
+      if (request.completedAt && request.completedAt < cutoffTime) {
+        this.completedRequests.delete(requestId);
+        removedCount++;
+      }
+    }
+    
+    if (removedCount > 0) {
+      logger.debug(`Cleaned up ${removedCount} completed requests older than ${this.config.completedRequestRetentionMs}ms`);
+    }
+  }
+
+  /**
+   * Start the periodic cleanup timer
+   */
+  private startCleanupTimer(): void {
+    this.cleanupInterval = setInterval(() => {
+      this.cleanupCompletedRequests();
+    }, CLEANUP_INTERVAL_MS);
+    
+    logger.info(`Started completed request cleanup timer (interval: ${CLEANUP_INTERVAL_MS}ms, retention: ${this.config.completedRequestRetentionMs}ms)`);
+  }
+
+  /**
+   * Stop the cleanup timer
+   */
+  private stopCleanupTimer(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+      logger.info('Stopped completed request cleanup timer');
+    }
+  }
+
+  /**
+   * Manually trigger cleanup of old requests
+   * @returns Number of requests cleaned up
+   */
+  public cleanupOldRequests(): number {
+    const initialSize = this.completedRequests.size;
+    this.cleanupCompletedRequests();
+    return initialSize - this.completedRequests.size;
   }
 }

@@ -32,7 +32,7 @@ This project is inspired by and references Code Web Chat (CWC) for its browser i
 1. **MCP Server** (`/server`)
    - Exposes MCP tools: `chat_gemini`, `chat_chatgpt`
    - Manages WebSocket server for browser communication
-   - Robust request queue manager with concurrency limits, timeouts, and race condition protection
+   - Robust request queue manager with concurrency limits, timeouts, race condition protection, and TTL-based memory leak prevention
 
 2. **Browser Extension** (`/extension`)
    - Modified fork of CWC browser extension
@@ -67,7 +67,7 @@ team-think-mcp/
 │   │   │   ├── index.ts          # WebSocket exports and singleton
 │   │   │   └── test-client.ts    # WebSocket test client
 │   │   ├── queue/                # Request queue manager (Phase 2.4)
-│   │   │   ├── queue-manager.ts  # Robust queue with concurrency & timeout handling
+│   │   │   ├── queue-manager.ts  # Robust queue with concurrency, timeout & memory leak prevention
 │   │   │   ├── types.ts          # Queue-related type definitions
 │   │   │   └── index.ts          # Queue exports and lazy singleton
 │   │   ├── config/
@@ -242,7 +242,7 @@ interface ChatResponseMessage {
 - Automatic response detection and capture
 
 ### Phase 2: Enhancements
-- ✅ Robust request queue manager with concurrency control and timeout handling
+- ✅ Robust request queue manager with concurrency control, timeout handling, and TTL-based memory leak prevention
 - Continue conversation in same tab
 - Support for more AI services
 - Firefox support using CWC's build script
@@ -301,7 +301,7 @@ npm run start:server
 1. **Unit Tests**
    - MCP tool logic
    - Message parsing
-   - Comprehensive queue management (20 tests covering concurrency, timeouts, race conditions, memory leaks)
+   - Comprehensive queue management (25 tests covering concurrency, timeouts, race conditions, memory leak prevention)
 
 2. **Integration Tests**
    - WebSocket communication

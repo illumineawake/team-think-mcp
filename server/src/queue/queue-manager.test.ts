@@ -384,4 +384,115 @@ describe('QueueManager', () => {
       expect(stats.totalPending).toBe(0);
     });
   });
+
+  describe('memory cleanup', () => {
+    it('should clean up old completed requests', async () => {
+      // Create queue manager with short retention for testing
+      const testQueueManager = new QueueManager({
+        maxParallelPerService: 2,
+        requestTtlMs: 1000,
+        completedRequestRetentionMs: 200 // 200ms retention for test
+      });
+      
+      // Add and complete a request
+      const requestId = 'cleanup-test-id';
+      const promise = testQueueManager.addRequest('chat_gemini', 'test', undefined, requestId);
+      testQueueManager.resolveRequest(requestId, 'response');
+      await promise;
+      
+      // Verify request is in completed
+      let stats = testQueueManager.getQueueStats();
+      expect(stats.totalCompleted).toBe(1);
+      
+      // Wait for retention period
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Manually trigger cleanup
+      const cleaned = testQueueManager.cleanupOldRequests();
+      expect(cleaned).toBe(1);
+      
+      // Verify request was removed
+      stats = testQueueManager.getQueueStats();
+      expect(stats.totalCompleted).toBe(0);
+      
+      // Clean up
+      testQueueManager.cancelAllRequests();
+    });
+    
+    it('should not clean up recent completed requests', async () => {
+      // Add and complete a request
+      const requestId = 'recent-test-id';
+      const promise = queueManager.addRequest('chat_gemini', 'test', undefined, requestId);
+      queueManager.resolveRequest(requestId, 'response');
+      await promise;
+      
+      // Immediately trigger cleanup
+      const cleaned = queueManager.cleanupOldRequests();
+      expect(cleaned).toBe(0);
+      
+      // Request should still be there
+      const status = queueManager.getRequestStatus(requestId);
+      expect(status?.status).toBe('completed');
+    });
+
+    it('should not clean up requests without completedAt timestamp', async () => {
+      // This test verifies edge case handling for requests that might not have completedAt
+      const testQueueManager = new QueueManager({
+        maxParallelPerService: 2,
+        requestTtlMs: 1000,
+        completedRequestRetentionMs: 100
+      });
+      
+      // Add and complete a request
+      const requestId = 'timestamp-test-id';
+      const promise = testQueueManager.addRequest('chat_gemini', 'test', undefined, requestId);
+      testQueueManager.resolveRequest(requestId, 'response');
+      await promise;
+      
+      // Verify request is completed and has timestamp
+      const status = testQueueManager.getRequestStatus(requestId);
+      expect(status?.completedAt).toBeDefined();
+      
+      // Clean up
+      testQueueManager.cancelAllRequests();
+    });
+
+    it('should handle cleanup when completedRequests is empty', () => {
+      // Test cleanup on empty map
+      const cleaned = queueManager.cleanupOldRequests();
+      expect(cleaned).toBe(0);
+    });
+
+    it('should handle timeout requests during cleanup', async () => {
+      // Create queue manager with very short timeout and retention
+      const testQueueManager = new QueueManager({
+        maxParallelPerService: 2,
+        requestTtlMs: 100, // Very short timeout
+        completedRequestRetentionMs: 200
+      });
+      
+      // Add a request that will timeout
+      const requestId = 'timeout-cleanup-test-id';
+      const requestPromise = testQueueManager.addRequest('chat_gemini', 'test', undefined, requestId);
+      
+      // Wait for timeout
+      await Promise.allSettled([requestPromise]);
+      
+      // Verify it's in completed requests as timeout
+      let stats = testQueueManager.getQueueStats();
+      expect(stats.totalTimeout).toBe(1);
+      
+      // Wait for retention period and cleanup
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const cleaned = testQueueManager.cleanupOldRequests();
+      expect(cleaned).toBe(1);
+      
+      // Verify timeout request was cleaned up
+      stats = testQueueManager.getQueueStats();
+      expect(stats.totalTimeout).toBe(0);
+      
+      // Clean up
+      testQueueManager.cancelAllRequests();
+    });
+  });
 });

@@ -15,6 +15,10 @@ export const HEARTBEAT_INTERVAL_MS = process.env.HEARTBEAT_INTERVAL_MS ? parseIn
 export const MAX_PARALLEL_PER_SERVICE = process.env.MAX_PARALLEL_PER_SERVICE ? parseInt(process.env.MAX_PARALLEL_PER_SERVICE) : 1;
 export const REQUEST_TTL_MS = process.env.REQUEST_TTL_MS ? parseInt(process.env.REQUEST_TTL_MS) : 300000; // 5 minutes
 
+// Completed request retention
+export const COMPLETED_REQUEST_RETENTION_MS = process.env.COMPLETED_REQUEST_RETENTION_MS ? parseInt(process.env.COMPLETED_REQUEST_RETENTION_MS) : 15 * 60 * 1000; // 15 minutes
+export const CLEANUP_INTERVAL_MS = process.env.CLEANUP_INTERVAL_MS ? parseInt(process.env.CLEANUP_INTERVAL_MS) : 5 * 60 * 1000; // Run cleanup every 5 minutes
+
 // Authentication Configuration (Phase 2.3)
 export const AUTH_TIMEOUT_MS = process.env.AUTH_TIMEOUT_MS ? parseInt(process.env.AUTH_TIMEOUT_MS) : 5000; // 5 seconds to authenticate
 export const TOKEN_LENGTH = process.env.TOKEN_LENGTH ? parseInt(process.env.TOKEN_LENGTH) : 32; // Length of security token
