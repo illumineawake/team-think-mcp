@@ -32,7 +32,7 @@ This project is inspired by and references Code Web Chat (CWC) for its browser i
 1. **MCP Server** (`/server`)
    - Exposes MCP tools: `chat_gemini`, `chat_chatgpt`
    - Manages WebSocket server for browser communication
-   - Handles request queuing and response routing
+   - Robust request queue manager with concurrency limits, timeouts, and race condition protection
 
 2. **Browser Extension** (`/extension`)
    - Modified fork of CWC browser extension
@@ -66,6 +66,10 @@ team-think-mcp/
 │   │   │   ├── websocket-server.ts # WebSocket server with heartbeat & connection mgmt
 │   │   │   ├── index.ts          # WebSocket exports and singleton
 │   │   │   └── test-client.ts    # WebSocket test client
+│   │   ├── queue/                # Request queue manager (Phase 2.4)
+│   │   │   ├── queue-manager.ts  # Robust queue with concurrency & timeout handling
+│   │   │   ├── types.ts          # Queue-related type definitions
+│   │   │   └── index.ts          # Queue exports and lazy singleton
 │   │   ├── config/
 │   │   │   └── constants.ts      # Server configuration constants
 │   │   └── dev.ts                # Development testing client
@@ -200,8 +204,8 @@ interface ChatResponseMessage {
 
 2. **Server Queues Request**
    ```typescript
-   const requestId = generateRequestId();
-   requestQueue.add({ requestId, tool: 'chat_gemini', prompt, options });
+   const promise = queueManager.addRequest('chat_gemini', prompt, options);
+   // Automatically handles concurrency limits and timeouts
    ```
 
 3. **Server Sends to Extension**
@@ -238,9 +242,9 @@ interface ChatResponseMessage {
 - Automatic response detection and capture
 
 ### Phase 2: Enhancements
+- ✅ Robust request queue manager with concurrency control and timeout handling
 - Continue conversation in same tab
 - Support for more AI services
-- Error handling and retry logic
 - Firefox support using CWC's build script
 
 ### Phase 3: Team Think Features
@@ -297,7 +301,7 @@ npm run start:server
 1. **Unit Tests**
    - MCP tool logic
    - Message parsing
-   - Queue management
+   - Comprehensive queue management (20 tests covering concurrency, timeouts, race conditions, memory leaks)
 
 2. **Integration Tests**
    - WebSocket communication

@@ -3,6 +3,7 @@ import { logger } from '../utils/logger';
 import { WebSocketMessage, SendPromptMessage, ChatResponseMessage, AuthenticationMessage, isAuthenticationMessage } from '@team-think-mcp/shared';
 import { MAX_CONCURRENT_CONNECTIONS, CONNECTION_TIMEOUT_MS, HEARTBEAT_INTERVAL_MS, AUTH_TIMEOUT_MS, TOKEN_LENGTH } from '../config/constants';
 import { generateSecurityToken, validateToken } from '../utils/security';
+import { getQueueManager, QueueStats } from '../queue';
 
 /**
  * WebSocket Server Manager for Team Think MCP
@@ -82,6 +83,9 @@ export class WebSocketServerManager {
     }
 
     logger.info('Stopping WebSocket server...');
+
+    // Cancel all pending/active requests in queue manager
+    getQueueManager().cancelAllRequests();
 
     // Stop heartbeat mechanism
     if (this.heartbeatInterval) {
@@ -219,11 +223,13 @@ export class WebSocketServerManager {
 
       // Handle different message types (only for authenticated clients)
       if (isChatResponseMessage(message)) {
-        // TODO: Integrate with request queue (Phase 2.4)
-        // For now, just log the response
-        logger.info(`Chat response received: ${message.response.substring(0, 100)}...`);
+        // Integrate with request queue manager
         if (message.error) {
-          logger.warn(`Chat response included error: ${message.error}`);
+          logger.warn(`Chat response included error for request ${message.requestId}: ${message.error}`);
+          getQueueManager().rejectRequest(message.requestId, message.error);
+        } else {
+          logger.info(`Chat response received for request ${message.requestId}: ${message.response.substring(0, 100)}...`);
+          getQueueManager().resolveRequest(message.requestId, message.response);
         }
       } else if (isSendPromptMessage(message)) {
         logger.warn(`Received unexpected send-prompt message from client ${clientId} - this should come from server`);
@@ -435,12 +441,13 @@ export class WebSocketServerManager {
   }
 
   /**
-   * Get connection statistics
+   * Get connection statistics including queue manager stats
    */
   public getConnectionStats(): { 
     totalConnections: number; 
     activeConnections: number; 
-    connectionDetails: Array<{ clientId: string; connectionTime: number; isAlive: boolean }> 
+    connectionDetails: Array<{ clientId: string; connectionTime: number; isAlive: boolean }>;
+    queueStats: QueueStats;
   } {
     const connectionDetails = Array.from(this.connectedClients.entries()).map(([clientId, clientInfo]) => ({
       clientId,
@@ -451,7 +458,8 @@ export class WebSocketServerManager {
     return {
       totalConnections: this.clientIdCounter,
       activeConnections: this.connectedClients.size,
-      connectionDetails
+      connectionDetails,
+      queueStats: getQueueManager().getQueueStats()
     };
   }
 }
