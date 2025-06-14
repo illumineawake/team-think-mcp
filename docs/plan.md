@@ -23,11 +23,11 @@
        - [x] 2.1. In the `server` package, set up a basic Node.js server using TypeScript.  
        - [x] 2.2. Implement a WebSocket server that listens on a new port (e.g., 55156) to avoid conflicts with CWC.  
        - [x] 2.3. Implement a hardened security handshake: on startup, the server generates an ephemeral security token and logs it to the console for the user to configure in the extension. Reject connections without this token.  
-       - [ ] 2.4. Create a robust request queue manager (`queue-manager.ts`) with the following features:
-           - [ ] 2.4.1. A mechanism to hold incoming prompts and associate them with a unique `requestId`.
-           - [ ] 2.4.2. Concurrency limits to control how many jobs can run in parallel for each service (e.g., `MAX_PARALLEL_PER_SERVICE=1`).
-           - [ ] 2.4.3. A per-request timeout (`REQUEST_TTL_MS`) to prevent indefinite hangs.
-           - [ ] 2.4.4. A cancellation/cleanup function to handle timed-out requests or requests that fail due to WebSocket/tab closure.
+       - [x] 2.4. Create a robust request queue manager (`queue-manager.ts`) with the following features:
+           - [x] 2.4.1. A mechanism to hold incoming prompts and associate them with a unique `requestId`.
+           - [x] 2.4.2. Concurrency limits to control how many jobs can run in parallel for each service (e.g., `MAX_PARALLEL_PER_SERVICE=1`).
+           - [x] 2.4.3. A per-request timeout (`REQUEST_TTL_MS`) to prevent indefinite hangs.
+           - [x] 2.4.4. A cancellation/cleanup function to handle timed-out requests or requests that fail due to WebSocket/tab closure.
        - [ ] 2.5. Stub out the MCP tools (`chat-gemini.ts`, `chat-chatgpt.ts`). These tools will add a request to the queue and await its resolution.  
        - [ ] 2.6. When a `chat-response` or `chat-error` message is received from the extension, the server should resolve or reject the corresponding queued request and return the outcome to the MCP client.  
 

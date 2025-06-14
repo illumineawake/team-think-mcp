@@ -186,9 +186,7 @@ interface ChatResponseMessage {
   inputSchema: {
     type: "object",
     properties: {
-      prompt: { type: "string", description: "The prompt to send" },
-      temperature: { type: "number", description: "Temperature (0-2)", default: 1 },
-      model: { type: "string", description: "Model name", default: "gpt-4" }
+      prompt: { type: "string", description: "The prompt to send" }
     },
     required: ["prompt"]
   }
