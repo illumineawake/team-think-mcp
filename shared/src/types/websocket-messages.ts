@@ -25,6 +25,7 @@ export interface ChatResponseMessage extends BaseMessage {
   requestId: string;
   response: string;
   error?: string;
+  errorCode?: 'SESSION_EXPIRED' | 'LOGIN_REQUIRED' | 'AUTHENTICATION_FAILED' | 'NETWORK_ERROR' | 'UNKNOWN';
 }
 
 // Extension → MCP Server (Authentication)

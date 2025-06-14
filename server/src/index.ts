@@ -5,6 +5,9 @@ import { ToolRegistry } from './tools/registry';
 import { logger, LogLevel } from './utils/logger';
 import { getWebSocketServer } from './websocket';
 import { WEBSOCKET_PORT } from './config/constants';
+import { getQueueManager } from './queue';
+import { ChatGeminiTool } from './tools/chat-gemini';
+import { ChatGptTool } from './tools/chat-chatgpt';
 
 // Set debug level if requested
 if (process.env.DEBUG) {
@@ -67,6 +70,19 @@ async function startServers() {
     
     // Start WebSocket server
     await wsServer.start();
+    logger.info('WebSocket server started successfully');
+    
+    // Get QueueManager singleton and register chat tools
+    const queueManager = getQueueManager();
+    
+    // Create and register chat tools
+    const chatGeminiTool = new ChatGeminiTool(queueManager);
+    const chatGptTool = new ChatGptTool(queueManager);
+    
+    toolRegistry.register(chatGeminiTool);
+    toolRegistry.register(chatGptTool);
+    
+    logger.info('Chat tools registered successfully');
     logger.info('All servers started successfully');
   } catch (error) {
     logger.error('Failed to start servers:', error);

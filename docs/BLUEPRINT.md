@@ -52,16 +52,22 @@ This project is inspired by and references Code Web Chat (CWC) for its browser i
 team-think-mcp/
 ├── server/
 │   ├── src/
-│   │   ├── index.ts              # MCP server entry point
+│   │   ├── index.ts              # MCP server entry point with tool registration
 │   │   ├── mcp/                  # MCP protocol implementation
 │   │   │   ├── protocol.ts       # JSON-RPC protocol handler
 │   │   │   ├── types.ts          # MCP type definitions
 │   │   │   ├── handshake.ts      # MCP initialization
 │   │   │   └── server.ts         # Main MCP server
 │   │   ├── tools/
-│   │   │   └── registry.ts       # Tool registry system
+│   │   │   ├── registry.ts       # Tool registry system
+│   │   │   ├── base-chat-tool.ts # Base class for chat tools (Phase 2.5)
+│   │   │   ├── chat-gemini.ts    # Gemini tool implementation (Phase 2.5)
+│   │   │   ├── chat-chatgpt.ts   # ChatGPT tool implementation (Phase 2.5)
+│   │   │   └── chat-tools.test.ts # Comprehensive test suite (Phase 2.5)
 │   │   ├── utils/
-│   │   │   └── logger.ts         # Structured logging
+│   │   │   ├── logger.ts         # Structured logging
+│   │   │   ├── security.ts       # Security utilities
+│   │   │   └── validator.ts      # AJV schema validation with caching (Phase 2.5)
 │   │   ├── websocket/            # WebSocket server implementation (Phase 2.2)
 │   │   │   ├── websocket-server.ts # WebSocket server with heartbeat & connection mgmt
 │   │   │   ├── index.ts          # WebSocket exports and singleton
@@ -154,6 +160,7 @@ interface ChatResponseMessage {
   requestId: string;
   response: string;
   error?: string;
+  errorCode?: 'SESSION_EXPIRED' | 'LOGIN_REQUIRED' | 'AUTHENTICATION_FAILED' | 'NETWORK_ERROR' | 'UNKNOWN';
 }
 ```
 
@@ -164,15 +171,27 @@ interface ChatResponseMessage {
 ```typescript
 {
   name: "chat_gemini",
-  description: "Send a prompt to Google Gemini AI Studio and get response",
+  description: "Send a prompt to Google Gemini AI and get a response",
   inputSchema: {
     type: "object",
     properties: {
-      prompt: { type: "string", description: "The prompt to send" },
-      temperature: { type: "number", description: "Temperature (0-1)", default: 0.7 },
-      model: { type: "string", description: "Model name", default: "gemini-pro" }
+      prompt: { type: "string", description: "The prompt to send to Gemini" },
+      temperature: { 
+        type: "number", 
+        description: "Controls randomness in the response (0.0 = deterministic, 1.0 = very random)", 
+        minimum: 0,
+        maximum: 1,
+        default: 0.7 
+      },
+      model: { 
+        type: "string", 
+        description: "The Gemini model to use for the request", 
+        enum: ["gemini-2.5-flash", "gemini-1.5-pro", "gemini-1.5-flash", "gemini-1.0-pro"],
+        default: "gemini-2.5-flash" 
+      }
     },
-    required: ["prompt"]
+    required: ["prompt"],
+    additionalProperties: false
   }
 }
 ```
@@ -182,70 +201,119 @@ interface ChatResponseMessage {
 ```typescript
 {
   name: "chat_chatgpt",
-  description: "Send a prompt to ChatGPT and get response",
+  description: "Send a prompt to OpenAI ChatGPT and get a response",
   inputSchema: {
     type: "object",
     properties: {
-      prompt: { type: "string", description: "The prompt to send" }
+      prompt: { type: "string", description: "The prompt to send to ChatGPT" }
     },
-    required: ["prompt"]
+    required: ["prompt"],
+    additionalProperties: false
   }
 }
 ```
 
-### 5. Request Flow
+### 5. Tool Implementation Architecture
+
+The chat tools follow a robust architecture pattern:
+
+1. **Base Chat Tool Class**
+   - Implements the `Tool` interface from registry
+   - Handles WebSocket connection state validation
+   - Provides schema validation using compiled AJV validators
+   - Manages error handling and MCP response formatting
+
+2. **Tool-Specific Implementations**
+   - `ChatGeminiTool`: Supports temperature and model parameters
+   - `ChatGptTool`: Minimal interface with prompt-only parameter
+   - Both tools use dependency injection for QueueManager
+
+3. **Validation Layer**
+   - AJV validator with schema compilation and caching
+   - Input validation before queue operations
+   - Type-safe parameter handling with TypeScript
+
+4. **Error Handling**
+   - WebSocket connection state checking
+   - Session/login failure detection with specific error codes
+   - Graceful degradation when browser extension is not connected
+
+### 6. Request Flow
 
 1. **MCP Client Request**
    ```
    Client → MCP Server: Execute tool "chat_gemini" with prompt
    ```
 
-2. **Server Queues Request**
+2. **Tool Validation & WebSocket Check**
+   ```typescript
+   // Tool checks WebSocket connection
+   if (!hasAuthenticatedClients()) {
+     return error("No browser extension connected");
+   }
+   // Validates input parameters
+   const validationResult = validator.validate(args);
+   ```
+
+3. **Server Queues Request**
    ```typescript
    const promise = queueManager.addRequest('chat_gemini', prompt, options);
    // Automatically handles concurrency limits and timeouts
    ```
 
-3. **Server Sends to Extension**
+4. **Server Sends to Extension**
    ```
    MCP Server → Extension (WebSocket): { action: 'send-prompt', requestId, ... }
    ```
 
-4. **Extension Opens Tab & Injects**
+5. **Extension Opens Tab & Injects**
    - Creates new browser tab with AI chat URL
    - Waits for page load using CWC's wait conditions
    - Injects prompt using CWC's DOM manipulation code
 
-5. **Extension Monitors Response**
+6. **Extension Monitors Response**
    - Uses MutationObserver from CWC
    - Detects completion using CWC's selectors
    - Extracts response text
 
-6. **Extension Sends Response**
+7. **Extension Sends Response**
    ```
    Extension → MCP Server (WebSocket): { action: 'chat-response', requestId, response }
    ```
 
-7. **Server Returns to Client**
+8. **Server Returns to Client**
    ```
    MCP Server → Client: Tool result with AI response
    ```
 
 ## Implementation Phases
 
-### Phase 1: MVP
-- Basic MCP server with chat_gemini and chat_chatgpt tools
+### Phase 1: MVP ✅
+- ✅ Basic MCP server with chat_gemini and chat_chatgpt tools
 - Simple browser extension (no UI, just background + content scripts)
 - New tab for each request
 - Automatic response detection and capture
 
-### Phase 2: Enhancements
-- ✅ Robust request queue manager with concurrency control, timeout handling, and TTL-based memory leak prevention
+### Phase 2: Server Implementation (Completed)
+- ✅ Robust request queue manager with concurrency control, timeout handling, and TTL-based memory leak prevention (Phase 2.4)
+- ✅ MCP tools implementation with comprehensive validation using AJV (Phase 2.5)
+- ✅ WebSocket connection state checking in tools (Phase 2.5)
+- ✅ Session/login error handling with specific error codes (Phase 2.5)
+- ✅ 100% test coverage for chat tools with 24 comprehensive tests (Phase 2.5)
+- ✅ Tool registration integrated into server startup (Phase 2.5)
+
+### Phase 3: Browser Extension (Next)
+- Adapt CWC browser extension code
+- WebSocket client connection to MCP server
+- Content scripts for Gemini and ChatGPT
+- Automatic response extraction and sending
+
+### Phase 4: Enhanced Features
 - Continue conversation in same tab
 - Support for more AI services
 - Firefox support using CWC's build script
 
-### Phase 3: Team Think Features
+### Phase 5: Team Think Features
 - Parallel requests to multiple AIs
 - Response aggregation and comparison
 - Consensus mechanisms
@@ -276,6 +344,12 @@ interface ChatResponseMessage {
 - Chrome/Firefox browser
 - MCP-compatible client (e.g., Claude Code)
 
+### Key Dependencies
+- **ws**: WebSocket server implementation
+- **ajv**: JSON Schema validation for tool input validation
+- **@team-think-mcp/shared**: Shared types for WebSocket messages
+- **jest**: Testing framework with 100% coverage for chat tools
+
 ### Build Commands
 ```bash
 # Install dependencies
@@ -296,19 +370,23 @@ npm run start:server
 
 ## Testing Strategy
 
-1. **Unit Tests**
-   - MCP tool logic
-   - Message parsing
-   - Comprehensive queue management (25 tests covering concurrency, timeouts, race conditions, memory leak prevention)
+1. **Unit Tests (Implemented)**
+   - ✅ Chat tools implementation (24 comprehensive tests with 100% coverage)
+   - ✅ Validation logic with AJV schema compilation
+   - ✅ WebSocket connection state handling
+   - ✅ Error propagation and MCP response formatting
+   - ✅ Tool registry integration
+   - ✅ Comprehensive queue management (25 tests covering concurrency, timeouts, race conditions, memory leak prevention)
 
-2. **Integration Tests**
+2. **Integration Tests (Planned)**
    - WebSocket communication
    - Extension ↔ Server interaction
+   - Session/login failure scenarios
 
-3. **E2E Tests**
+3. **E2E Tests (Planned)**
    - Full flow: MCP request → AI response
    - Multiple AI services
-   - Error scenarios
+   - Error scenarios with specific error codes
 
 ## Key Files to Reference from CWC
 
@@ -332,20 +410,28 @@ When implementing, refer to these CWC files:
 ## Success Criteria
 
 1. **Functionality**
-   - Can send prompts to Gemini AI Studio and ChatGPT
-   - Receives complete responses automatically
-   - Works with existing browser sessions
+   - ✅ MCP tools for Gemini AI Studio and ChatGPT implemented
+   - ✅ Robust input validation with proper schemas
+   - ✅ WebSocket connection state checking
+   - ⏳ Receives complete responses automatically (pending browser extension)
+   - ⏳ Works with existing browser sessions (pending browser extension)
 
 2. **Performance**
-   - Response detection within 500ms of completion
-   - Minimal browser resource usage
+   - ✅ Efficient schema validation with caching
+   - ✅ Queue manager handles concurrent requests with limits
+   - ⏳ Response detection within 500ms of completion (pending browser extension)
+   - ⏳ Minimal browser resource usage (pending browser extension)
 
 3. **Reliability**
-   - Handles network errors gracefully
-   - Recovers from extension crashes
-   - Queue prevents request loss
+   - ✅ Handles WebSocket disconnections gracefully
+   - ✅ Session/login error detection with specific codes
+   - ✅ Comprehensive error handling and user-friendly messages
+   - ✅ Queue prevents request loss with TTL and timeout handling
+   - ⏳ Recovers from extension crashes (pending browser extension)
 
 4. **Developer Experience**
-   - Simple MCP tool interface
-   - Clear error messages
-   - Easy to extend with new AI services
+   - ✅ Simple MCP tool interface with TypeScript types
+   - ✅ Clear error messages for all failure scenarios
+   - ✅ Easy to extend with new AI services using base class
+   - ✅ 100% test coverage for critical components
+   - ✅ Well-documented architecture and implementation

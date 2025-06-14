@@ -225,8 +225,30 @@ export class WebSocketServerManager {
       if (isChatResponseMessage(message)) {
         // Integrate with request queue manager
         if (message.error) {
-          logger.warn(`Chat response included error for request ${message.requestId}: ${message.error}`);
-          getQueueManager().rejectRequest(message.requestId, message.error);
+          logger.warn(`Chat response included error for request ${message.requestId}: ${message.error} (code: ${message.errorCode || 'UNKNOWN'})`);
+          
+          // Create enhanced error with code information
+          let enhancedError = message.error;
+          if (message.errorCode) {
+            switch (message.errorCode) {
+              case 'SESSION_EXPIRED':
+                enhancedError = 'Session expired. Please log in to the AI service again.';
+                break;
+              case 'LOGIN_REQUIRED':
+                enhancedError = 'Login required. Please log in to the AI service.';
+                break;
+              case 'AUTHENTICATION_FAILED':
+                enhancedError = 'Authentication failed. Please check your credentials.';
+                break;
+              case 'NETWORK_ERROR':
+                enhancedError = 'Network error occurred. Please check your internet connection.';
+                break;
+              default:
+                enhancedError = message.error;
+            }
+          }
+          
+          getQueueManager().rejectRequest(message.requestId, enhancedError);
         } else {
           logger.info(`Chat response received for request ${message.requestId}: ${message.response.substring(0, 100)}...`);
           getQueueManager().resolveRequest(message.requestId, message.response);
@@ -365,6 +387,19 @@ export class WebSocketServerManager {
    */
   public getConnectedClientIds(): string[] {
     return Array.from(this.connectedClients.keys());
+  }
+
+  /**
+   * Get the number of authenticated clients
+   */
+  public getAuthenticatedClientsCount(): number {
+    let count = 0;
+    for (const clientInfo of this.connectedClients.values()) {
+      if (clientInfo.isAuthenticated) {
+        count++;
+      }
+    }
+    return count;
   }
 
   /**

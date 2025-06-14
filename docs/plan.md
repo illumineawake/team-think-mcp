@@ -28,8 +28,8 @@
            - [x] 2.4.2. Concurrency limits to control how many jobs can run in parallel for each service (e.g., `MAX_PARALLEL_PER_SERVICE=1`).
            - [x] 2.4.3. A per-request timeout (`REQUEST_TTL_MS`) to prevent indefinite hangs.
            - [x] 2.4.4. A cancellation/cleanup function to handle timed-out requests or requests that fail due to WebSocket/tab closure.
-       - [ ] 2.5. Stub out the MCP tools (`chat-gemini.ts`, `chat-chatgpt.ts`). These tools will add a request to the queue and await its resolution.  
-       - [ ] 2.6. When a `chat-response` or `chat-error` message is received from the extension, the server should resolve or reject the corresponding queued request and return the outcome to the MCP client.  
+       - [x] 2.5. Stub out the MCP tools (`chat-gemini.ts`, `chat-chatgpt.ts`). These tools will add a request to the queue and await its resolution.  
+       - [x] 2.6. When a `chat-response` or `chat-error` message is received from the extension, the server should resolve or reject the corresponding queued request and return the outcome to the MCP client.  
 
    - [ ] **Phase 3 – Browser Extension - Core Logic (MVP)**  
        - [ ] 3.1. Adapt the CWC `packages/browser` code into the new `extension` package.  
