@@ -88,18 +88,27 @@ team-think-mcp/
 ```
 team-think-mcp/
 ├── extension/
-│   ├── manifest.json             # Extension manifest (v3 for Chrome, v2 for Firefox)
+│   ├── manifest.json             # Extension manifest (v3 for Chrome)
 │   ├── src/
 │   │   ├── background/
-│   │   │   ├── index.ts         # Background script
-│   │   │   └── websocket.ts     # WebSocket client (adapted from CWC)
-│   │   └── content-scripts/
-│   │       ├── index.ts         # Content script entry
-│   │       └── chatbots/        # Adapted from CWC
-│   │           ├── gemini.ts    # AI Studio adapter
-│   │           └── chatgpt.ts   # ChatGPT adapter
+│   │   │   ├── index.ts         # Background script entry point
+│   │   │   ├── config.ts        # Configuration constants
+│   │   │   ├── websocket-client.ts # WebSocket client (adapted from CWC)
+│   │   │   ├── message-handler.ts  # Chrome runtime message routing
+│   │   │   └── tab-manager.ts   # Browser tab management
+│   │   ├── content-scripts/
+│   │   │   ├── index.ts         # Content script entry
+│   │   │   └── chatbots/        # Adapted from CWC
+│   │   │       ├── base-chatbot.ts # Base chatbot interface
+│   │   │       ├── gemini.ts    # AI Studio adapter
+│   │   │       └── chatgpt.ts   # ChatGPT adapter
+│   │   ├── options/              # Extension options page
+│   │   │   ├── options.html     # Auth token configuration UI
+│   │   │   └── options.ts       # Options page logic
+│   │   └── types/
+│   │       └── messages.ts      # Internal message types
 │   ├── package.json
-│   └── build-firefox.js         # Firefox compatibility script
+│   └── webpack.config.js        # Webpack build configuration
 ```
 
 ### 3. Key Adaptations from CWC
@@ -286,6 +295,9 @@ The chat tools follow a robust architecture pattern:
    MCP Server → Client: Tool result with AI response
    ```
 
+### Important Implementation Note
+The queue manager must actively send `send-prompt` messages to the extension when requests are activated. This was initially missing but has been fixed in the implementation.
+
 ## Implementation Phases
 
 ### Phase 1: MVP ✅
@@ -302,11 +314,14 @@ The chat tools follow a robust architecture pattern:
 - ✅ 100% test coverage for chat tools with 24 comprehensive tests (Phase 2.5)
 - ✅ Tool registration integrated into server startup (Phase 2.5)
 
-### Phase 3: Browser Extension (Next)
-- Adapt CWC browser extension code
-- WebSocket client connection to MCP server
-- Content scripts for Gemini and ChatGPT
-- Automatic response extraction and sending
+### Phase 3: Browser Extension (In Progress)
+- ✅ Adapt CWC browser extension code (Phase 3.1 - Complete)
+- ✅ WebSocket client connection to MCP server (Phase 3.1 - Complete)
+- ✅ Authentication flow with options page (Phase 3.1 - Complete)
+- ⏳ Message handling for send-prompt (Phase 3.3 - Pending)
+- ⏳ Tab creation and management (Phase 3.4 - Pending)
+- ⏳ Content scripts for Gemini and ChatGPT (Phase 4 - Pending)
+- ⏳ Automatic response extraction and sending (Phase 4 - Pending)
 
 ### Phase 4: Enhanced Features
 - Continue conversation in same tab
@@ -321,7 +336,8 @@ The chat tools follow a robust architecture pattern:
 ## Security Considerations
 
 1. **WebSocket Security**
-   - Localhost-only connections (127.0.0.1:55156)
+   - Localhost-only connections (localhost:55156)
+     - Note: Use `localhost` instead of `127.0.0.1` for WSL compatibility
    - Ephemeral token authentication with cryptographically secure generation
    - 5-second authentication timeout to prevent hanging connections
    - Constant-time token validation to prevent timing attacks
@@ -388,6 +404,11 @@ npm run start:server
    - Multiple AI services
    - Error scenarios with specific error codes
 
+4. **Manual Testing During Development**
+   - Use `phased-testing-guide.md` for testing incomplete implementations
+   - Use `manual-testing-guide.md` only after all phases complete
+   - MCP server requires new instance per client (cannot share connections)
+
 ## Key Files to Reference from CWC
 
 When implementing, refer to these CWC files:
@@ -413,25 +434,29 @@ When implementing, refer to these CWC files:
    - ✅ MCP tools for Gemini AI Studio and ChatGPT implemented
    - ✅ Robust input validation with proper schemas
    - ✅ WebSocket connection state checking
-   - ⏳ Receives complete responses automatically (pending browser extension)
-   - ⏳ Works with existing browser sessions (pending browser extension)
+   - ✅ Browser extension structure and authentication (Phase 3.1)
+   - ⏳ Receives complete responses automatically (pending Phase 3.3-4)
+   - ⏳ Works with existing browser sessions (pending Phase 4)
 
 2. **Performance**
    - ✅ Efficient schema validation with caching
    - ✅ Queue manager handles concurrent requests with limits
-   - ⏳ Response detection within 500ms of completion (pending browser extension)
-   - ⏳ Minimal browser resource usage (pending browser extension)
+   - ⏳ Response detection within 500ms of completion (pending Phase 4)
+   - ⏳ Minimal browser resource usage (pending optimization)
 
 3. **Reliability**
    - ✅ Handles WebSocket disconnections gracefully
-   - ✅ Session/login error detection with specific codes
+   - ✅ Server-side session/login error detection with specific codes
    - ✅ Comprehensive error handling and user-friendly messages
    - ✅ Queue prevents request loss with TTL and timeout handling
-   - ⏳ Recovers from extension crashes (pending browser extension)
+   - ✅ Extension reconnects automatically after disconnection
+   - ⏳ Client-side session detection (pending Phase 4.1)
+   - ⏳ Recovers from extension crashes (pending Phase 4)
 
 4. **Developer Experience**
    - ✅ Simple MCP tool interface with TypeScript types
    - ✅ Clear error messages for all failure scenarios
    - ✅ Easy to extend with new AI services using base class
-   - ✅ 100% test coverage for critical components
+   - ✅ 100% test coverage for server components
    - ✅ Well-documented architecture and implementation
+   - ✅ Phased testing guide for development

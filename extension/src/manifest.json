@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Team Think MCP Extension",
+  "short_name": "TeamThinkMCP",
+  "description": "Browser extension for Team Think MCP - connects to Gemini and ChatGPT via MCP server",
+  "version": "1.0.0",
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://aistudio.google.com/*",
+    "https://chatgpt.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://aistudio.google.com/app/prompts/new_chat*",
+        "https://aistudio.google.com/prompts/new_chat*"
+      ],
+      "js": ["content-scripts.js"]
+    },
+    {
+      "matches": [
+        "https://chatgpt.com/*"
+      ],
+      "js": ["content-scripts.js"]
+    }
+  ],
+  "options_page": "options/options.html"
+}

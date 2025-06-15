@@ -115,6 +115,36 @@ export class QueueManager {
     
     logger.info(`Request ${request.requestId} activated for ${service}. Active: ${activeCount + 1}/${this.config.maxParallelPerService}`);
     
+    // Send the request to the browser extension via WebSocket
+    try {
+      const { getWebSocketServer } = require('../websocket');
+      const wsServer = getWebSocketServer();
+      
+      const sendPromptMessage = {
+        schema: '1.0' as const,
+        timestamp: Date.now(),
+        action: 'send-prompt' as const,
+        chatbot: service.replace('chat_', '') as 'gemini' | 'chatgpt',
+        requestId: request.requestId,
+        prompt: request.prompt,
+        options: request.options
+      };
+      
+      wsServer.broadcastMessage(sendPromptMessage);
+      logger.info(`Sent prompt to extension for request ${request.requestId}`);
+    } catch (error) {
+      logger.error(`Failed to send prompt to extension: ${error instanceof Error ? error.message : String(error)}`);
+      // Cancel the request if we can't send it
+      request.status = 'failed';
+      request.completedAt = Date.now();
+      if (request.reject) {
+        request.reject(new Error('Failed to send prompt to browser extension'));
+      }
+      this.completedRequests.set(request.requestId, request);
+      this.cleanupRequest(request);
+      return;
+    }
+    
     // Try to process another request if we still have capacity
     if (activeCount + 1 < this.config.maxParallelPerService) {
       this.processNextInQueue(service);

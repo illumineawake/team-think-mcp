@@ -1,286 +1,259 @@
-# Manual Testing Guide for Team Think MCP Server
+# Complete Manual Testing Guide for Team Think MCP Browser Extension
 
-This guide explains how to manually test the Team Think MCP Server to verify it's working correctly.
+⚠️ **IMPORTANT**: This guide is for testing the COMPLETE implementation (all phases). 
+If you're testing during development, use `phased-testing-guide.md` instead!
 
-## Prerequisites
+**Current Status**: Only Phase 3.1 is implemented. Most features in this guide won't work yet.
 
-Before testing, ensure you have:
+This guide assumes you have never tested a browser extension before and provides step-by-step instructions with exact commands to type and buttons to click.
 
-- **Node.js**: Version 18 or higher
-- **npm**: Installed with Node.js
-- **Terminal/Command Line**: Access to run commands
+## Prerequisites Check
 
-## Setup Instructions
+Before starting, make sure you have:
+1. Google Chrome browser installed
+2. Access to the terminal/command prompt
+3. The Team Think MCP project folder
 
-### 1. Install Dependencies
+## Part 1: Building the Extension
 
-From the project root directory:
+### Step 1: Open Terminal
+1. **On Windows**: Press `Win + R`, type `cmd` and press Enter
+2. **On Mac**: Press `Cmd + Space`, type `terminal` and press Enter
+3. **On Linux**: Press `Ctrl + Alt + T`
 
+### Step 2: Navigate to Extension Folder
+Type this command exactly (adjust the path if your project is elsewhere):
 ```bash
-cd "/path/to/team-think-mcp"
-npm install
+cd "/mnt/c/VS Code Projects/Code Web Chat/CodeWebChat/team-think-mcp"
 ```
+Press Enter.
 
-### 2. Build the Server
-
-Build the shared package first, then the server:
-
+### Step 3: Build Everything
+Type these commands one by one, pressing Enter after each:
 ```bash
-# Build shared types package
-npm run build:shared
-
-# Build the MCP server
-cd server
+npm install
 npm run build
 ```
 
-You should see no TypeScript errors. The compiled JavaScript files will be in `server/dist/`.
+You should see output showing webpack building files. If you see any red error messages, stop and ask for help.
 
-## Manual Testing Methods
+### Step 4: Verify Build Success
+Type:
+```bash
+ls extension/dist
+```
 
-### Method 1: Using the Built-in Test Client (Recommended)
+You should see files like:
+- manifest.json
+- background.js
+- content-scripts.js
+- options.html
+- options.js
 
-The easiest way to test the server is using the included test client:
+If you don't see these files, the build failed.
 
+## Part 2: Starting the MCP Server
+
+### Step 5: Start the Server (New Terminal)
+1. Open a NEW terminal window (keep the first one open)
+2. Navigate to the project again:
+```bash
+cd "/mnt/c/VS Code Projects/Code Web Chat/CodeWebChat/team-think-mcp"
+```
+
+3. Start the server:
 ```bash
 cd server
-npm run test
+npm run dev
 ```
 
-**Expected Output:**
+### Step 6: Copy the Auth Token
+When the server starts, you'll see something like:
 ```
-🚀 Starting MCP Server development tests...
-
-Server log: 2025-06-11T14:20:33.142Z [INFO] [TeamThinkMCP] Team Think MCP Server started
-Server log: 2025-06-11T14:20:33.146Z [INFO] [TeamThinkMCP] Starting MCP server...
-Server log: 2025-06-11T14:20:33.146Z [INFO] [TeamThinkMCP] MCP server is ready to accept connections
-
-📤 Testing: Initialize Request
-✅ Initialize Request - Response validation passed
-📤 Testing: Initialized Notification
-✅ Initialized Notification - Notification sent
-📤 Testing: Tools List Request
-✅ Tools List Request - Response validation passed
-📤 Testing: Invalid Method Request
-✅ Invalid Method Request - Response validation passed
-
-🛑 Stopping server...
-
-✅ All tests completed successfully!
+🔐 Authentication token: abc123-def456-ghi789
 ```
 
-### Method 2: Manual Command Line Testing
+**IMPORTANT**: Copy this entire token (select it and press Ctrl+C or Cmd+C). You'll need it soon.
 
-For more detailed testing, you can manually send JSON-RPC messages to the server.
+Keep this terminal window open - the server needs to keep running.
 
-#### Step 1: Start the Server
+## Part 3: Loading the Extension in Chrome
 
-In one terminal window:
+### Step 7: Open Chrome Extension Manager
+1. Open Google Chrome
+2. Click the three dots menu (⋮) in the top right
+3. Hover over "More tools"
+4. Click "Extensions"
 
+OR just type this in the address bar:
+```
+chrome://extensions/
+```
+
+### Step 8: Enable Developer Mode
+1. Look at the top right of the Extensions page
+2. Find the "Developer mode" toggle switch
+3. Click it so it turns blue/on
+
+### Step 9: Load the Extension
+1. Click the "Load unpacked" button (appears after enabling Developer mode)
+2. Navigate to your extension's dist folder:
+   - Browse to your project folder
+   - Open `team-think-mcp`
+   - Open `extension`
+   - Select the `dist` folder
+   - Click "Select Folder" or "Open"
+
+### Step 10: Verify Extension Loaded
+You should see "Team Think MCP Extension" appear in your extensions list. If you see any errors in red, stop and ask for help. But if you see a red error button and the only thing it says is "authentication token not configured" then carry on to step 11.
+
+## Part 4: Configuring the Extension
+
+### Step 11: Open Extension Options
+1. Find "Team Think MCP Extension" in your extensions list
+2. Click "Details"
+3. Scroll down and click "Extension options"
+
+OR:
+1. Click the puzzle piece icon in Chrome toolbar
+2. Find "Team Think MCP Extension"
+3. Click the three dots next to it
+4. Click "Options"
+
+### Step 12: Enter the Auth Token
+1. In the options page that opens, you'll see an input field labeled "Auth Token"
+2. Paste the token you copied in Step 6 (Ctrl+V or Cmd+V)
+3. Click "Save"
+4. You should see "✓ Connected" appear in green
+
+If you see "✗ Disconnected" in red:
+- Make sure the server is still running (check the terminal from Step 5)
+- Make sure you copied the token correctly
+- Try clicking Save again
+
+## Part 5: Testing Basic Connection
+
+### Step 13: Check Developer Tools (Optional but Helpful)
+1. On the Extensions page (chrome://extensions/)
+2. Find "Team Think MCP Extension"
+3. Click "background page" under "Inspect views"
+4. This opens Developer Tools for the extension
+5. Click the "Console" tab
+6. You should see messages like "WebSocket connected"
+
+## Part 6: Testing with Gemini AI Studio
+
+### Step 14: Prepare Gemini AI Studio
+1. Open a new tab
+2. Go to: https://aistudio.google.com
+3. Sign in with your Google account if needed
+4. Make sure you can see the chat interface
+
+### Step 15: Test Gemini from MCP Server
+1. Go back to your first terminal (from Step 2)
+2. Open a new terminal tab (usually Ctrl+Shift+T or Cmd+T)
+3. Run the test client:
 ```bash
-cd server
-npm run start
+cd "/mnt/c/VS Code Projects/Code Web Chat/CodeWebChat/team-think-mcp/server"
+npm run test:auth YOUR_AUTH_TOKEN_HERE
 ```
+Replace `YOUR_AUTH_TOKEN_HERE` with the token from Step 6.
 
-**Expected Output:**
+### Step 16: Send a Test Prompt to Gemini
+In the test client, you'll see a prompt. Type:
 ```
-2025-06-11T14:20:33.142Z [INFO] [TeamThinkMCP] Team Think MCP Server started
-2025-06-11T14:20:33.146Z [INFO] [TeamThinkMCP] Starting MCP server...
-2025-06-11T14:20:33.146Z [INFO] [TeamThinkMCP] MCP server is ready to accept connections
+gemini Hello, can you see this message?
 ```
+Press Enter.
 
-The server is now listening for JSON-RPC messages on stdin.
+### Step 17: Watch What Happens
+1. A new tab should open with Gemini AI Studio
+2. You should see the prompt "Hello, can you see this message?" being typed automatically
+3. Wait for Gemini to respond
+4. The response should appear in your terminal
+5. The browser tab should close automatically
 
-#### Step 2: Send Test Messages
+## Part 7: Testing with ChatGPT
 
-**Important**: All messages must be valid JSON on a single line, followed by Enter.
+### Step 18: Prepare ChatGPT
+1. Open a new tab
+2. Go to: https://chatgpt.com
+3. Sign in if needed
+4. Make sure you can see the chat interface
 
-##### Test 1: Initialize Request
-
-Type this exactly (all on one line):
-
-```json
-{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test-client","version":"1.0.0"}}}
+### Step 19: Test ChatGPT from Test Client
+In the same test client terminal, type:
 ```
-
-**Expected Response:**
-```json
-{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"team-think-mcp","version":"0.1.0"}}}
+chatgpt Hello from Team Think MCP!
 ```
+Press Enter.
 
-**Log Output:**
-```
-2025-06-11T14:20:57.765Z [INFO] [TeamThinkMCP] Handling initialize request from client: - test-client
-```
+### Step 20: Watch What Happens
+1. A new tab should open with ChatGPT
+2. The prompt should be typed automatically
+3. Wait for the response
+4. The response should appear in your terminal
 
-##### Test 2: Initialized Notification
+## Part 8: Testing Error Scenarios
 
-```json
-{"jsonrpc":"2.0","method":"initialized","params":{}}
-```
+### Step 21: Test Without Login
+1. Open an incognito window (Ctrl+Shift+N or Cmd+Shift+N)
+2. Try the test again - it should report "LOGIN_REQUIRED" error
 
-**Expected Response:** No JSON response (notifications don't get responses)
+### Step 22: Test Disconnection
+1. Stop the server (press Ctrl+C in the server terminal)
+2. Try sending a prompt - it should fail gracefully
+3. Start the server again (`npm run dev`)
+4. The extension should reconnect automatically
 
-**Log Output:**
-```
-2025-06-11T14:20:57.766Z [INFO] [TeamThinkMCP] Received initialized notification, handshake complete
-```
+## Troubleshooting Common Issues
 
-##### Test 3: Tools List Request
+### "WebSocket connection failed"
+- Make sure server is running
+- Check the auth token is correct
+- Try refreshing the options page
 
-```json
-{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
-```
+### "No response from chatbot"
+- Make sure you're logged into the AI service
+- Check if the page fully loaded
+- Try manually refreshing the AI chat page
 
-**Expected Response:**
-```json
-{"jsonrpc":"2.0","id":2,"result":{"tools":[]}}
-```
+### "Extension not working"
+1. Go to chrome://extensions/
+2. Find Team Think MCP Extension
+3. Click the refresh icon (🔄)
+4. Try again
 
-##### Test 4: Invalid Method (Error Handling Test)
+### "Can't see console messages"
+1. Right-click the extension icon
+2. Click "Inspect popup" (if available)
+3. Or go to chrome://extensions/ and click "background page"
 
-```json
-{"jsonrpc":"2.0","id":3,"method":"invalid/method","params":{}}
-```
+## Success Checklist
 
-**Expected Response:**
-```json
-{"jsonrpc":"2.0","id":3,"error":{"code":-32601,"message":"Method not found","data":"Unknown method: invalid/method"}}
-```
+✅ Extension loads without errors
+✅ Options page saves auth token
+✅ Shows "Connected" status
+✅ Opens Gemini tab when prompted
+✅ Automatically types prompt
+✅ Captures and returns response
+✅ Opens ChatGPT tab when prompted
+✅ Handles not-logged-in scenario
 
-##### Test 5: Malformed JSON (Error Handling Test)
+## What to Report
 
-```
-{invalid json}
-```
+If something doesn't work, note:
+1. Which step failed
+2. Any error messages you see
+3. What happened vs what should have happened
+4. Screenshots if possible
 
-**Expected Response:** No response (cannot parse request ID)
+## Cleanup
 
-**Log Output:**
-```
-2025-06-11T14:20:57.766Z [ERROR] [TeamThinkMCP] Error parsing JSON-RPC message: [SyntaxError details]
-```
-
-#### Step 3: Stop the Server
-
-Press `Ctrl+C` to gracefully shutdown the server.
-
-**Expected Output:**
-```
-2025-06-11T14:20:35.946Z [INFO] [TeamThinkMCP] Received SIGINT, shutting down gracefully...
-2025-06-11T14:20:35.946Z [INFO] [TeamThinkMCP] Server shutdown complete
-```
-
-### Method 3: Using Echo and Pipes (Quick Test)
-
-For a quick verification that the server responds to initialize:
-
-```bash
-cd server
-echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test-client","version":"1.0.0"}}}' | npm run start
-```
-
-You should see the initialize response immediately.
-
-## Understanding the Output
-
-### JSON-RPC Responses
-
-All responses follow the JSON-RPC 2.0 specification:
-
-- **Success Response**: Contains `"result"` field
-- **Error Response**: Contains `"error"` field with `code`, `message`, and optional `data`
-- **Notifications**: No response expected
-
-### Log Messages
-
-- **INFO**: Normal operation messages
-- **ERROR**: Error conditions
-- **WARN**: Warning conditions
-- All logs go to stderr (not stdout) to avoid interfering with JSON-RPC communication
-
-### Server Status Indicators
-
-1. **"Team Think MCP Server started"** - Server process initialized
-2. **"Starting MCP server..."** - Protocol handler starting
-3. **"MCP server is ready to accept connections"** - Ready for JSON-RPC messages
-4. **"Handling initialize request from client"** - Successfully processing MCP handshake
-
-## Troubleshooting
-
-### Common Issues
-
-#### Server Won't Start
-
-**Problem**: `npm run start` fails with module errors
-**Solution**: 
-1. Run `npm install` in the project root
-2. Run `npm run build:shared` 
-3. Run `npm run build` in the server directory
-
-#### No Response to Messages
-
-**Problem**: Server receives message but doesn't respond
-**Solution**:
-1. Ensure JSON is valid and on a single line
-2. Check that the message includes required fields (`jsonrpc`, `id`, `method`)
-3. Verify you pressed Enter after typing the message
-
-#### Build Errors
-
-**Problem**: TypeScript compilation fails
-**Solution**:
-1. Check Node.js version (requires 18+)
-2. Ensure all dependencies are installed
-3. Verify tsconfig.json files are not corrupted
-
-#### Invalid JSON Error
-
-**Problem**: "Error parsing JSON-RPC message"
-**Solution**:
-1. Validate JSON syntax using a JSON validator
-2. Ensure the entire message is on one line
-3. Check for trailing commas or extra characters
-
-### Debug Mode
-
-Enable detailed logging by setting the DEBUG environment variable:
-
-```bash
-cd server
-DEBUG=1 npm run start
-```
-
-This will show more detailed log messages to help diagnose issues.
-
-## Success Criteria Checklist
-
-Use this checklist to verify the server is working correctly:
-
-- [ ] Server starts without errors
-- [ ] Logs "Team Think MCP Server started"
-- [ ] Logs "MCP server is ready to accept connections"  
-- [ ] Responds to initialize request with correct protocol version
-- [ ] Handles initialized notification without errors
-- [ ] Returns empty tools list for tools/list request
-- [ ] Returns error response for invalid methods
-- [ ] Handles malformed JSON gracefully
-- [ ] Shuts down gracefully with Ctrl+C
-- [ ] All logs go to stderr (not mixed with JSON responses)
-
-## Next Steps
-
-Once manual testing confirms the server works correctly, you can:
-
-1. **Integrate with MCP Client**: Connect the server to Claude Code or another MCP-compatible client
-2. **Add Tools**: Implement the `chat_gemini` and `chat_chatgpt` tools
-3. **Add WebSocket Server**: Enable browser extension communication
-
-## Support
-
-If you encounter issues not covered in this guide:
-
-1. Check the error logs for specific error messages
-2. Verify all prerequisites are met
-3. Ensure you're following the exact steps in this guide
-4. Try the automated test client first (`npm run test`) before manual testing
+When done testing:
+1. Stop the server (Ctrl+C in server terminal)
+2. Remove the extension:
+   - Go to chrome://extensions/
+   - Find Team Think MCP Extension
+   - Click "Remove"
+   - Confirm removal

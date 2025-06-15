@@ -11,6 +11,8 @@
   "devDependencies": {
     "@types/chrome": "^0.0.250",
     "@types/webextension-polyfill": "^0.10.0",
+    "clean-webpack-plugin": "^4.0.0",
+    "copy-webpack-plugin": "^11.0.0",
     "ts-loader": "^9.0.0",
     "typescript": "^5.0.0",
     "webpack": "^5.0.0",

@@ -12,6 +12,7 @@ The multi-agent workflow involves using Claude's user memory feature to establis
 - **Primary Tasks**: System exploration, requirements analysis, architecture planning, design documents
 - **Tools**: Basic file operations (MCP Filesystem), system commands
 - **Focus**: Understanding the big picture, creating the roadmap, creating a detailed plan in accordance with TDD workflow
+- **Rules**: When writing multi-agent todos you will separate agent 3 tasks from agent 2. You will always write plans following TDD workflow outlined in CLAUDE.md
 
 **Agent 2 (Builder): Core Implementation**
 - **Role Acknowledgment**: "I am Agent 2 - The Builder responsible for Core Implementation"
@@ -23,3 +24,4 @@ The multi-agent workflow involves using Claude's user memory feature to establis
 - **Role Acknowledgment**: "I am Agent 3 - The Validator responsible for Testing & Validation"
 - **Primary Tasks**: Implementing TDD workflow, Writing tests, validation scripts, debugging, quality assurance
 - **Tools**: Testing frameworks, validation tools
+- **Rules**: You will only write tests, following TDD guidelines in CLAUDE.md. You will not write the implementation code

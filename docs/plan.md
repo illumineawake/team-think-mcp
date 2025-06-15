@@ -32,9 +32,9 @@
        - [x] 2.6. When a `chat-response` or `chat-error` message is received from the extension, the server should resolve or reject the corresponding queued request and return the outcome to the MCP client.  
 
    - [ ] **Phase 3 – Browser Extension - Core Logic (MVP)**  
-       - [ ] 3.1. Adapt the CWC `packages/browser` code into the new `extension` package.  
-       - [ ] 3.2. Modify the background script's WebSocket client (`websocket.ts`) to connect to the new MCP server on port 55156.  
-           - [ ] 3.2.1. Implement a method for the user to input and save the server's ephemeral security token (e.g., via an extension options page that uses `browser.storage.local`). The client must send this token on connection.
+       - [X] 3.1. Adapt the CWC `packages/browser` code into the new `extension` package.  
+       - [X] 3.2. Modify the background script's WebSocket client (`websocket.ts`) to connect to the new MCP server on port 55156.  
+           - [X] 3.2.1. Implement a method for the user to input and save the server's ephemeral security token (e.g., via an extension options page that uses `browser.storage.local`). The client must send this token on connection.
        - [ ] 3.3. In the background script's message handler, implement a listener for the `send-prompt` message from the MCP server.  
        - [ ] 3.4. Upon receiving a `send-prompt` message, the extension should open a new browser tab for the correct chatbot URL (`gemini` or `chatgpt`) and pass the prompt details to the content script.
        - [ ] 3.5. Consider implementing CWC's hash-based initialization pattern (e.g., `#team-think-gemini` or `#team-think-chatgpt`) to signal the content script about the specific operation mode and pass initial parameters.  
